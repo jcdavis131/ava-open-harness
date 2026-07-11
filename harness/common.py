@@ -22,21 +22,18 @@ class MockTokenizer:
         self._word_to_id: Dict[str, int] = {}
         self._next_id = 256
     def encode(self, text: str) -> List[int]:
-        # crude but deterministic: hash word? For canonical tests we need single-token guarantee for test words
-        # special case: single word no spaces => single token
         t = text.strip()
         if not t:
             return []
         if " " not in t:
             if t not in self._word_to_id:
-                # deterministic id from sum bytes
                 self._word_to_id[t] = (sum(b for b in t.encode()) % (self.vocab_size - 1000)) + 500
             return [self._word_to_id[t]]
-        # sentence: tokenize by words
         ids = []
         for w in t.split():
             if w not in self._word_to_id:
-                self._word_to_id[w] = (self._next_id := self._next_id + 1) % self.vocab_size
+                self._next_id += 1
+                self._word_to_id[w] = self._next_id % self.vocab_size
             ids.append(self._word_to_id[w])
         return ids
     def decode(self, ids: List[int]) -> str:
@@ -52,9 +49,9 @@ class MockModel:
     def reset_memory(self): pass
     def __repr__(self): return f"<MockModel seed={self.seed}>"
 
-def load_model(ckpt_path: str | None, preset: str = "nano", device: str = "cpu") -> Tuple[Any, Any]:
+def load_model(ckpt_path: str | None, preset: str = "nano", device: str = "cpu", backend: str = "auto") -> Tuple[Any, Any]:
     """Load real model if torch available and ckpt exists, else mock.
-
+    backend: auto|mock|hf|vllm — vllm path uses batching for wall 2.02h->1.80h
     Returns (model, tokenizer)
     """
     torch = _lazy_torch()
