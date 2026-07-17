@@ -107,6 +107,15 @@ def run_harness(
     # load model with backend awareness
     ckpt_path = ckpt if mode=="real" else None
     model, tokenizer = load_model(ckpt_path, preset=preset, device=device, backend=effective_backend if 'backend' in load_model.__code__.co_varnames else None)  # type: ignore
+    from .common import MockModel as _MockModel
+    if mode == "real" and isinstance(model, _MockModel):
+        # A "real" report backed by a mock model is a fabricated report (HARNESS_SPEC
+        # anti-mock rule). Fail loudly instead of silently downgrading to mock numbers.
+        raise RuntimeError(
+            "--mode real requested but no real model was loaded "
+            f"(ckpt={ckpt!r}, torch available and path exists?). "
+            "Run with --mode mock for plumbing checks, or provide a valid --ckpt."
+        )
 
     # vLLM optimization note: batched inference would reduce wall 2.02h->1.80h
     results: Dict[str,Any] = {

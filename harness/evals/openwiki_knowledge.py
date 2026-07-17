@@ -30,19 +30,23 @@ def scan_wiki(wiki_path: str | None = None) -> List[pathlib.Path]:
 def openwiki_knowledge(model: Any, tokenizer: Any, device: str="cpu", wiki_path: str | None = None, **kw) -> Dict[str,Any]:
     wiki_files = scan_wiki(wiki_path)
     is_mock = isinstance(model, MockModel)
+    if not is_mock:
+        from ..common import real_unimplemented
+        return real_unimplemented(
+            "openwiki_knowledge", "mass>=0.06",
+            "live S2 recall mass over wiki concept probes — previous constant 0.08 / "
+            "per-file random.uniform were fabricated",
+        )
     if not wiki_files:
-        measured = {"n_wiki_files": 0, "recall_mass": 0.0, "note": "no wiki found, using mock corpus from specs/02_data"}
-        if is_mock:
-            measured["recall_mass"] = random.uniform(0.05, 0.15)
-        else:
-            measured["recall_mass"] = 0.08
+        measured = {"n_wiki_files": 0, "recall_mass": random.uniform(0.05, 0.15),
+                    "note": "no wiki found, using mock corpus from specs/02_data"}
         passed = measured["recall_mass"] >= 0.06
         return {"test":"openwiki_knowledge", "measured": measured, "pass": bool(passed), "bar":"mass>=0.06"}
 
-    # simulate recall: each wiki page title -> concept probe
+    # mock recall: each wiki page title -> seeded concept probe
     scores = []
     for f in wiki_files[:20]:
-        random.seed(hash(f.name) % 10000 + (model.seed if is_mock else 0))
+        random.seed(hash(f.name) % 10000 + model.seed)
         scores.append(random.uniform(0.04, 0.18))
     avg = sum(scores)/len(scores) if scores else 0.0
     measured = {"n_wiki_files": len(wiki_files), "sampled": len(scores), "recall_mass": avg, "files": [str(p) for p in wiki_files[:5]]}
