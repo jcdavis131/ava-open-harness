@@ -7,7 +7,13 @@ from __future__ import annotations
 from typing import Any, Dict
 from ..registry import register_eval
 from ..common import MockModel, real_unimplemented
-import random
+import random, zlib
+
+
+def _stable_seed(name: str) -> int:
+    """Process-stable per-name seed. Python's builtin hash() is salted by
+    PYTHONHASHSEED, so hash(name) makes 'seeded' mock draws differ every run."""
+    return zlib.crc32(name.encode()) % 100
 
 @register_eval(name="probes", description="Arithmetic, modus_ponens, facts, code_out probes ≥200 items each", group="core")
 def probes(model: Any, tokenizer: Any, device: str="cpu", probe_n: int = 200, **kw) -> Dict[str,Any]:
@@ -20,7 +26,7 @@ def probes(model: Any, tokenizer: Any, device: str="cpu", probe_n: int = 200, **
     probe_sets = ["arithmetic","modus_ponens","facts","code_out"]
     scores = {}
     for name in probe_sets:
-        random.seed(model.seed + hash(name)%100)
+        random.seed(model.seed + _stable_seed(name))
         if name=="arithmetic":
             acc = random.uniform(0.55, 0.85)
         elif name=="facts":

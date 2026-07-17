@@ -14,8 +14,8 @@ def needle(model: Any, tokenizer: Any, device: str="cpu", **kw) -> Dict[str,Any]
     if not isinstance(model, MockModel):
         return real_unimplemented(
             "needle", "avg>=0.70",
-            "live pass-key retrieval at depths 0.1..0.9 over real contexts — previous "
-            "'0.9 if d<0.5 else 0.75' constants were fabricated",
+            "live pass-key retrieval at depths 0.1..0.9 over real contexts — the "
+            "previous depth-thresholded accuracy constants were fabricated",
         )
     depths = [0.1,0.3,0.5,0.7,0.9]
     results = {}

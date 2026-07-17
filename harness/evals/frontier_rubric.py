@@ -40,8 +40,8 @@ def frontier_rubric(model: Any, tokenizer: Any, device: str="cpu", **kw) -> Dict
         from ..common import real_unimplemented
         return real_unimplemented(
             "frontier_rubric", "weighted>=0.70",
-            "11-category scores from live jlosses + probes — previous flat 0.75s "
-            "(safety 0.82, reportability 0.78) were fabricated constants",
+            "11-category scores from live jlosses + probes — the previous flat "
+            "per-category constants were fabricated",
         )
 
     weighted = sum(scores[c["id"]]*c["weight"] for c in RUBRIC)
