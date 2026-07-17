@@ -37,10 +37,12 @@ def frontier_rubric(model: Any, tokenizer: Any, device: str="cpu", **kw) -> Dict
     if is_mock:
         scores = _score_mock(model.seed + 100)
     else:
-        # real: would compute from jlosses + probes
-        scores = {c["id"]: 0.75 for c in RUBRIC}
-        scores["safety_critic"]=0.82
-        scores["reportability"]=0.78
+        from ..common import real_unimplemented
+        return real_unimplemented(
+            "frontier_rubric", "weighted>=0.70",
+            "11-category scores from live jlosses + probes — the previous flat "
+            "per-category constants were fabricated",
+        )
 
     weighted = sum(scores[c["id"]]*c["weight"] for c in RUBRIC)
     # PASS if weighted >=0.70

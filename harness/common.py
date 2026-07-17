@@ -8,6 +8,22 @@ from __future__ import annotations
 from typing import Any, Tuple, List, Dict, Optional
 import os, json, math, random
 
+def real_unimplemented(test: str, bar: str, needs: str) -> Dict[str, Any]:
+    """Honest real-mode failure record.
+
+    HARNESS_SPEC: every float in a real report must come from a live forward pass.
+    A real path that isn't wired yet therefore FAILS with an explanation — it never
+    returns invented constants (that antipattern is exactly what this repo replaced).
+    """
+    return {
+        "test": test,
+        "measured": None,
+        "pass": False,
+        "bar": bar,
+        "error": f"real mode not implemented: {needs}",
+    }
+
+
 def _lazy_torch():
     try:
         import torch
@@ -138,8 +154,9 @@ def logprob_of(model: Any, prompt_ids: List[int], target_ids: List[int]) -> floa
                 lp += logp[pos, tid].item()
         return lp
     except Exception as e:
-        # fallback
-        return -2.5
+        # No silent fabricated fallback (HARNESS_SPEC anti-mock rule): a real-mode
+        # measurement that can't be computed must fail loudly, never invent a float.
+        raise RuntimeError(f"logprob_of failed on real model: {e}") from e
 
 def cosine_sim(a: Any, b: Any) -> float:
     try:

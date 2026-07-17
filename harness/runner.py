@@ -107,6 +107,13 @@ def run_harness(
     # load model with backend awareness
     ckpt_path = ckpt if mode=="real" else None
     model, tokenizer = load_model(ckpt_path, preset=preset, device=device, backend=effective_backend if 'backend' in load_model.__code__.co_varnames else None)  # type: ignore
+    from .common import MockModel as _MockModel, MockTokenizer as _MockTokenizer
+    # A "real" report backed by a mock model OR a mock tokenizer is fabricated
+    # (HARNESS_SPEC anti-mock rule). Also covers the real-model-but-missing-tokenizer
+    # case, where the model would run over hash-derived garbage token IDs.
+    real_load_failed = mode == "real" and (
+        isinstance(model, _MockModel) or isinstance(tokenizer, _MockTokenizer)
+    )
 
     # vLLM optimization note: batched inference would reduce wall 2.02h->1.80h
     results: Dict[str,Any] = {
@@ -127,6 +134,24 @@ def run_harness(
         "evals": {}
     }
     start = time.time()
+    if real_load_failed:
+        # Return a STRUCTURED honest-failure report (not a raise): every downstream
+        # caller — the report writer, ava-skills eval-harness-runner, the factory
+        # training gate — receives a normal report shape with pass=False + an error
+        # per eval, instead of an exception a broad `except` could swallow and then
+        # fabricate around. This is the loud failure, expressed as data.
+        why = (f"--mode real requested but no real model/tokenizer loaded "
+               f"(ckpt={ckpt!r}). Provide a valid --ckpt (and tokenizer), or use --mode mock.")
+        results["meta"]["error"] = why
+        results["meta"]["real_load_failed"] = True
+        for name in eval_names:
+            results["evals"][name] = {"test": name, "measured": None, "pass": False,
+                                      "bar": EVAL_REGISTRY[name].get("description", ""),
+                                      "error": f"real mode not run: {why}"}
+        results["meta"]["wall_s"] = time.time() - start
+        results["meta"]["passed"] = 0
+        results["meta"]["total"] = len(results["evals"])
+        return results
     # If vLLM backend, batch prompts (stub for mock still uses per-eval)
     for name in eval_names:
         entry = EVAL_REGISTRY[name]
