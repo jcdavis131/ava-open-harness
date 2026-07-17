@@ -5,7 +5,6 @@ Solo personal project, no connection to employer, built with public/free-tier on
 """
 from __future__ import annotations
 from typing import Callable, Dict, Any, List
-import functools
 
 EvalFn = Callable[..., Dict[str, Any]]
 EVAL_REGISTRY: Dict[str, Dict[str, Any]] = {}
@@ -26,10 +25,8 @@ def register_eval(name: str, description: str = "", group: str = "general", requ
             "group": group,
             "requires_model": requires_model,
         }
-        @functools.wraps(fn)
-        def wrapper(*args, **kwargs):
-            return fn(*args, **kwargs)
-        return wrapper
+        # Return fn unchanged — the old wraps() wrapper was a no-op passthrough.
+        return fn
     return decorator
 
 def list_evals(group: str | None = None) -> List[str]:

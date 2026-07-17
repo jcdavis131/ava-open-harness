@@ -38,10 +38,17 @@ def frontier_rubric(model: Any, tokenizer: Any, device: str="cpu", **kw) -> Dict
         scores = _score_mock(model.seed + 100)
     else:
         from ..common import real_unimplemented
+        # Audited 2026-07: the factory exposes NO rubric aggregate to delegate to.
+        # eval_frontier_rubric.py in ava-agi-factory-v6-4 is a FrontierFinance
+        # keyword-overlap judge unrelated to live J-Space states, and mapping
+        # ava/jlosses.py JSpaceObjective loss values onto 0..1 rubric scores
+        # would require an invented normalization — i.e. fabricated scores.
+        # Until an honest loss→score calibration exists, real mode fails loudly.
         return real_unimplemented(
             "frontier_rubric", "weighted>=0.70",
-            "11-category scores from live jlosses + probes — the previous flat "
-            "per-category constants were fabricated",
+            "no honest real aggregation exists: factory eval_frontier_rubric.py is a "
+            "keyword-heuristic judge (not live jspace), and normalizing raw jlosses "
+            "into 0..1 category scores would be an invented mapping",
         )
 
     weighted = sum(scores[c["id"]]*c["weight"] for c in RUBRIC)

@@ -60,7 +60,11 @@ class TestReportGrep:
 
 class TestRealModeHonesty:
     @pytest.mark.parametrize("name", JSPACE)
-    def test_unwired_real_paths_fail_honestly(self, name):
+    def test_unwired_real_paths_fail_honestly(self, name, monkeypatch):
+        # Real paths now delegate to the factory repo when importable; simulate
+        # a machine WITHOUT the factory — the real path must fail honestly with
+        # a structured record, never simulate a measurement.
+        monkeypatch.setenv("AVA_FACTORY_ROOT", "/nonexistent-factory-root")
         res = getattr(J, name)(object(), MockTokenizer(), "cpu")  # non-MockModel → real path
         assert res["pass"] is False
         assert res.get("measured") is None

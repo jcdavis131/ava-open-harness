@@ -23,8 +23,15 @@ jobs:
           OPENWIKI_PROVIDER: ${{ secrets.OPENWIKI_PROVIDER}}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY}}
         run: openwiki code --update --print || echo "openwiki update failed"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install harness
+        run: pip install -e . pytest pyyaml
+      - name: Anti-mock guard (pytest)
+        run: python -m pytest tests/ -q
       - name: Run harness mock
-        run: pip install -e. && python -m harness run --eval all --mode mock --out-dir reports || echo skip
+        run: python -m harness run --eval all --mode mock --out-dir reports
       - name: Create PR
         uses: peter-evans/create-pull-request@v6
         with:

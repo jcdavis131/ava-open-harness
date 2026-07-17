@@ -15,24 +15,35 @@ Ava Factory previously had `eval_branch_harness.py` that fabricated scores (hard
 Maps:
 - `~/.openwiki/wiki` personal brain → S2 Slow (hl=300) verbalizable memory
 - `openwiki/` code docs → S1 Fast + Planner codebase awareness
-- evals → gate stable checkpoint `ava_stable_736k.pt` before branching to code/math/chat
+- evals → gate checkpoints before branching to code/math/chat
 
 ## Quickstart
 
 ```bash
-pip install -e .
-# or
-pip install ava-open-harness
+pip install -e .   # local editable install (not published to PyPI)
 
 # mock (no torch needed, CI-friendly)
 python -m harness run --eval all --mode mock
 
-# real with checkpoint from ava-agi-factory-v6-4
-python -m harness run --eval jspace --mode real --ckpt ../ava-agi-factory-v6-4/ava_stable_736k.pt --preset nano
+# real with the cpu_pilot SMOKE checkpoint from ava-agi-factory-v6-4
+python -m harness run --eval jspace --mode real \
+  --ckpt ../ava-agi-factory-v6-4/runs/cpu_pilot/base/base_final.pt \
+  --tokenizer ../ava-agi-factory-v6-4/runs/cpu_pilot/tokenizer/ava_nano_bpe.json \
+  --preset nano
 
 # single eval
 python -m harness run --eval spider_ant,france_china --mode mock --verbose
 ```
+
+**Smoke-scale caveat**: the only real checkpoint today is the factory's
+`runs/cpu_pilot/base/base_final.pt` (plus `agentic/agentic_final.pt`) — a
+~14M-param CPU pilot trained for ~90 steps. Real measurements from it are
+genuine live-forward numbers but imply **no model capability**; every real
+result is labeled `"scale": "smoke", "capability_claim": "none"`. Regenerate
+the checkpoint + tokenizer with the factory's `scripts/cpu_pilot_e2e.py`.
+The factory repo location defaults to `/home/user/ava-agi-factory-v6-4`;
+override with env `AVA_FACTORY_ROOT`. When the factory is not importable,
+real paths fail honestly (structured error records) — they never mock.
 
 ## Architecture
 
@@ -41,7 +52,8 @@ harness/
   __init__.py
   registry.py      @register_eval decorator
   runner.py        CLI orchestrator, mock/real modes
-  common.py        load_model, greedy_decode, logprob
+  common.py        load_model, greedy_decode, logprob, factory delegation
+  tasks/           11 versioned YAML task definitions (name/version/bar/group)
   evals/
     jspace_tests.py      5 canonical tests (Spider→Ant etc)
     frontier_rubric.py   11-category weighted rubric
@@ -88,10 +100,14 @@ In `ava-agi-factory-v6-4`:
 ```bash
 # install harness as dep
 pip install -e ../ava-open-harness
-
-# use from training
+```
+```python
+# use from training (smoke-scale pilot checkpoint; results carry scale=smoke)
 from harness.runner import run_harness
-results = run_harness(preset="nano", base_ckpt="runs/base/ava_nano_stable.pt", mode="real")
+results = run_harness(
+    eval_names="jspace", mode="real", preset="nano",
+    ckpt="runs/cpu_pilot/base/base_final.pt",
+)
 ```
 
 CI: copy `.github/workflows/openwiki-update.yml` template - it runs `openwiki code --update --print` and opens PR with updated `openwiki/` docs + eval reports.
