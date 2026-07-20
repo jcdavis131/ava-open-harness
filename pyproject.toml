@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Open evaluation harness for Ava AGI Factory v6.4 - J-Space canonical tests + Frontier rubric, openwiki aware. Solo personal project, no connection to employer, built with public/free-tier only"
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [{name="Cam Davis"}]
 dependencies = [
   "numpy>=1.24",
@@ -17,7 +17,7 @@ classifiers = [
 
 [project.optional-dependencies]
 torch = ["torch>=2.2", "transformers>=4.40", "safetensors"]
-dev = ["pytest>=8", "mypy"]
+dev = ["pytest>=8", "mypy", "ruff>=0.8", "pre-commit>=3.7"]
 
 [project.urls]
 Repository = "https://github.com/jcdavis131/ava-open-harness"
@@ -31,10 +31,59 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 strict = true
 warn_return_any = true
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+exclude = [".venv", "__pycache__", ".git", ".mypy_cache", "harness/__pycache__", "*.egg-info", "dist", "build"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "C4", "UP", "N", "S", "PTH", "TCH", "RUF"]
+ignore = [
+  "S101", # assert OK in tests/harness eval
+  "S603", # subprocess OK
+  "S607", # partial executable path OK
+  "S110", # try-except-pass intentional in harness
+  "S112", # try-except-continue intentional
+  "S311", # random non-cryptographic OK in harness
+  "E501", # line-too-long handled by ruff format
+  "W505", # doc-line-too-long
+  "N806", # non-lowercase-variable-in-function research
+  "N803", # invalid-argument-name legacy
+  "N812", # lowercase-imported-as-non-lowercase
+  "RUF001", # ambiguous unicode
+  "RUF002", # ambiguous unicode docstring
+  "RUF005", # collection concat micro
+  "PTH118", # os.path.join research keep
+  "PTH110", # os.path.exists
+  "PTH112", # isdir
+  "PTH113", # isfile
+  "PTH103", # makedirs
+  "PTH123", # builtin-open research
+  "PTH207", # glob research
+]
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+known-first-party = ["harness"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "parents"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+docstring-code-format = true
+

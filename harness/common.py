@@ -4,9 +4,14 @@ common.py — model/tokenizer loading, greedy decode, logprob, factory delegatio
 Solo personal project, no connection to employer, built with public/free-tier only
 Mypyc-ready: typed, lazy imports for torch
 """
+
 from __future__ import annotations
-from typing import Any, Tuple, List, Dict, Optional
-import os, sys, json, math, random
+
+import math
+import os
+import random
+import sys
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Factory (ava-agi-factory-v6-4) discovery.
@@ -26,13 +31,15 @@ def factory_root() -> str:
 
 def factory_available() -> bool:
     root = factory_root()
-    return os.path.isdir(root) and os.path.isfile(os.path.join(root, "evals", "jspace_tests.py"))
+    return os.path.isdir(root) and os.path.isfile(
+        os.path.join(root, "evals", "jspace_tests.py")
+    )
 
 
-_FACTORY_CACHE: Dict[str, Any] = {}
+_FACTORY_CACHE: dict[str, Any] = {}
 
 
-def factory_modules() -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+def factory_modules() -> tuple[dict[str, Any] | None, str | None]:
     """Import the factory's real eval modules.
 
     Returns (modules_dict, None) on success or (None, reason) on failure.
@@ -50,6 +57,7 @@ def factory_modules() -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
         sys.path.insert(0, root)
     try:
         import importlib
+
         mods = {
             name: importlib.import_module(name)
             for name in (
@@ -78,17 +86,17 @@ def factory_modules() -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
 # over-attached honest label is safe while a missing label would overclaim.
 # Revisit when a larger checkpoint ships (derive from a manifest, not a path).
 
-SMOKE_SCALE_LABELS: Dict[str, str] = {"scale": "smoke", "capability_claim": "none"}
+SMOKE_SCALE_LABELS: dict[str, str] = {"scale": "smoke", "capability_claim": "none"}
 
 
-def attach_smoke_labels(record: Dict[str, Any]) -> Dict[str, Any]:
+def attach_smoke_labels(record: dict[str, Any]) -> dict[str, Any]:
     """Attach smoke-scale honesty labels to a REAL measured result (in place)."""
     for k, v in SMOKE_SCALE_LABELS.items():
         record[k] = v
     return record
 
 
-def real_unimplemented(test: str, bar: str, needs: str) -> Dict[str, Any]:
+def real_unimplemented(test: str, bar: str, needs: str) -> dict[str, Any]:
     """Honest real-mode failure record.
 
     HARNESS_SPEC: every float in a real report must come from a live forward pass.
@@ -107,23 +115,29 @@ def real_unimplemented(test: str, bar: str, needs: str) -> Dict[str, Any]:
 def _lazy_torch():
     try:
         import torch
+
         return torch
     except ImportError:
         return None
 
+
 class MockTokenizer:
     """Deterministic single-token-per-word mock for offline CI."""
+
     def __init__(self, vocab_size: int = 128000):
         self.vocab_size = vocab_size
-        self._word_to_id: Dict[str, int] = {}
+        self._word_to_id: dict[str, int] = {}
         self._next_id = 256
-    def encode(self, text: str) -> List[int]:
+
+    def encode(self, text: str) -> list[int]:
         t = text.strip()
         if not t:
             return []
         if " " not in t:
             if t not in self._word_to_id:
-                self._word_to_id[t] = (sum(b for b in t.encode()) % (self.vocab_size - 1000)) + 500
+                self._word_to_id[t] = (
+                    sum(b for b in t.encode()) % (self.vocab_size - 1000)
+                ) + 500
             return [self._word_to_id[t]]
         ids = []
         for w in t.split():
@@ -132,25 +146,35 @@ class MockTokenizer:
                 self._word_to_id[w] = self._next_id % self.vocab_size
             ids.append(self._word_to_id[w])
         return ids
-    def decode(self, ids: List[int]) -> str:
-        inv = {v:k for k,v in self._word_to_id.items()}
+
+    def decode(self, ids: list[int]) -> str:
+        inv = {v: k for k, v in self._word_to_id.items()}
         return " ".join(inv.get(i, f"<{i}>") for i in ids)
+
 
 class MockModel:
     """Mock that mimics Ava model interface enough for harness shape checks."""
+
     def __init__(self, seed: int = 1234):
         self.seed = seed
         random.seed(seed)
-    def eval(self): return self
-    def reset_memory(self): pass
-    def __repr__(self): return f"<MockModel seed={self.seed}>"
+
+    def eval(self):
+        return self
+
+    def reset_memory(self):
+        pass
+
+    def __repr__(self):
+        return f"<MockModel seed={self.seed}>"
+
 
 def load_model(
     ckpt_path: str | None,
     preset: str = "nano",
     device: str = "cpu",
     tokenizer_path: str | None = None,
-) -> Tuple[Any, Any]:
+) -> tuple[Any, Any]:
     """Load the model + tokenizer.
 
     - ckpt None/"none"/"random-init"/"mock" → deterministic mocks (mock mode).
@@ -165,7 +189,9 @@ def load_model(
 
     torch = _lazy_torch()
     if torch is None:
-        raise RuntimeError("real mode requires torch (pip install torch); refusing to mock")
+        raise RuntimeError(
+            "real mode requires torch (pip install torch); refusing to mock"
+        )
     if not os.path.exists(ckpt_path):
         raise FileNotFoundError(f"checkpoint not found: {ckpt_path}")
 
@@ -196,7 +222,9 @@ def load_model(
     # token IDs, so a missing tokenizer FAILS LOUDLY — never silently mocks.
     if tokenizer_path:
         if not os.path.exists(tokenizer_path):
-            raise FileNotFoundError(f"--tokenizer given but not found: {tokenizer_path}")
+            raise FileNotFoundError(
+                f"--tokenizer given but not found: {tokenizer_path}"
+            )
         candidates = [tokenizer_path]
     else:
         candidates = [
@@ -224,7 +252,9 @@ def _extract_logits(out: Any, torch: Any) -> Any:
             return out["lm_logits"]
         if "logits" in out:
             return out["logits"]
-        raise RuntimeError(f"model output dict has no lm_logits/logits (keys={list(out.keys())})")
+        raise RuntimeError(
+            f"model output dict has no lm_logits/logits (keys={list(out.keys())})"
+        )
     if isinstance(out, torch.Tensor):
         return out
     if isinstance(out, (list, tuple)):
@@ -234,7 +264,9 @@ def _extract_logits(out: Any, torch: Any) -> Any:
     raise RuntimeError(f"cannot extract logits from model output of type {type(out)!r}")
 
 
-def greedy_decode(model: Any, prompt_ids: List[int], max_new: int = 8, vocab_size: int = 128000) -> List[int]:
+def greedy_decode(
+    model: Any, prompt_ids: list[int], max_new: int = 8, vocab_size: int = 128000
+) -> list[int]:
     """Greedy decode — deterministic pseudo-decode for mock, live argmax for real.
 
     Real path RAISES on any failure (mirrors logprob_of's honest-raise). The old
@@ -251,7 +283,9 @@ def greedy_decode(model: Any, prompt_ids: List[int], max_new: int = 8, vocab_siz
     # real path — honest raise on failure, no mock fallback
     try:
         model.eval()
-        device = next(model.parameters()).device if hasattr(model, "parameters") else "cpu"
+        device = (
+            next(model.parameters()).device if hasattr(model, "parameters") else "cpu"
+        )
         ids = torch.tensor([prompt_ids], dtype=torch.long, device=device)
         with torch.no_grad():
             for _ in range(max_new):
@@ -263,16 +297,20 @@ def greedy_decode(model: Any, prompt_ids: List[int], max_new: int = 8, vocab_siz
     except Exception as e:
         raise RuntimeError(f"greedy_decode failed on real model: {e}") from e
 
-def logprob_of(model: Any, prompt_ids: List[int], target_ids: List[int]) -> float:
+
+def logprob_of(model: Any, prompt_ids: list[int], target_ids: list[int]) -> float:
     """Sum logprob of target continuation given prompt."""
     torch = _lazy_torch()
     if isinstance(model, MockModel) or torch is None:
         # mock: pseudo logprob from deterministic mapping
-        random.seed(sum(prompt_ids)+sum(target_ids))
+        random.seed(sum(prompt_ids) + sum(target_ids))
         return random.uniform(-5.0, -0.2)
     try:
         import torch.nn.functional as F
-        device = next(model.parameters()).device if hasattr(model,'parameters') else 'cpu'
+
+        device = (
+            next(model.parameters()).device if hasattr(model, "parameters") else "cpu"
+        )
         full = prompt_ids + target_ids
         inp = torch.tensor([full[:-1]], dtype=torch.long, device=device)
         with torch.no_grad():
@@ -281,8 +319,8 @@ def logprob_of(model: Any, prompt_ids: List[int], target_ids: List[int]) -> floa
             logp = F.log_softmax(logits.float(), dim=-1)
         lp = 0.0
         for i, tid in enumerate(target_ids):
-            pos = len(prompt_ids) + i -1
-            if pos >=0 and pos < logp.shape[0]:
+            pos = len(prompt_ids) + i - 1
+            if pos >= 0 and pos < logp.shape[0]:
                 lp += logp[pos, tid].item()
         return lp
     except Exception as e:
@@ -290,34 +328,43 @@ def logprob_of(model: Any, prompt_ids: List[int], target_ids: List[int]) -> floa
         # measurement that can't be computed must fail loudly, never invent a float.
         raise RuntimeError(f"logprob_of failed on real model: {e}") from e
 
+
 def cosine_sim(a: Any, b: Any) -> float:
     try:
         import numpy as np
-        aa = np.array(a, dtype=float); bb = np.array(b, dtype=float)
-        denom = (np.linalg.norm(aa)*np.linalg.norm(bb)+1e-9)
-        return float(np.dot(aa,bb)/denom)
+
+        aa = np.array(a, dtype=float)
+        bb = np.array(b, dtype=float)
+        denom = np.linalg.norm(aa) * np.linalg.norm(bb) + 1e-9
+        return float(np.dot(aa, bb) / denom)
     except Exception:
         # pure python
-        dot = sum(x*y for x,y in zip(a,b))
-        na = math.sqrt(sum(x*x for x in a)); nb = math.sqrt(sum(y*y for y in b))
-        return dot/(na*nb+1e-9)
+        dot = sum(x * y for x, y in zip(a, b, strict=False))
+        na = math.sqrt(sum(x * x for x in a))
+        nb = math.sqrt(sum(y * y for y in b))
+        return dot / (na * nb + 1e-9)
 
-def auc_trapezoid(y_true: List[int], y_score: List[float]) -> float:
+
+def auc_trapezoid(y_true: list[int], y_score: list[float]) -> float:
     """Compute ROC AUC via trapezoid, no sklearn."""
     # sort by score descending
-    pairs = sorted(zip(y_score, y_true), reverse=True)
+    pairs = sorted(zip(y_score, y_true, strict=False), reverse=True)
     # compute TPR/FPR steps
-    pos = sum(y_true); neg = len(y_true)-pos
-    if pos==0 or neg==0:
+    pos = sum(y_true)
+    neg = len(y_true) - pos
+    if pos == 0 or neg == 0:
         return 0.5
     tp = fp = 0
-    prev_fpr = 0.0; prev_tpr = 0.0; auc=0.0
+    prev_fpr = 0.0
+    prev_tpr = 0.0
+    auc = 0.0
     for _, label in pairs:
-        if label==1:
-            tp+=1
+        if label == 1:
+            tp += 1
         else:
-            fp+=1
-        tpr = tp/pos; fpr = fp/neg
-        auc += (fpr-prev_fpr)*(tpr+prev_tpr)/2.0
+            fp += 1
+        tpr = tp / pos
+        fpr = fp / neg
+        auc += (fpr - prev_fpr) * (tpr + prev_tpr) / 2.0
         prev_fpr, prev_tpr = fpr, tpr
     return auc
