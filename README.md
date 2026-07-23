@@ -2,9 +2,9 @@
 
 > **Solo personal project, no connection to employer, built with public/free-tier only**
 
-Open harness for Ava AGI Factory v6.4 — evaluation-gated training, honest-by-construction UI.
+Open evaluation harness for [ava-agi-factory-v6-4](https://github.com/jcdavis131/ava-agi-factory-v6-4): every score must come from a live forward pass, and results that can't be measured fail with a structured error instead of a fabricated number.
 
-Implements the 5 canonical J-Space tests from Anthropic July 2026 + an 11-category Frontier Rubric adapted for AGI reasoning, plus OpenWiki knowledge recall, perplexity, probes, and needle-in-haystack.
+Implements the project's 5 J-Space behavioral tests, an 11-category weighted rubric, OpenWiki knowledge recall, perplexity, probes, and needle-in-haystack retrieval.
 
 Designed for free-tier: mock mode runs no GPU, full torch path is lazy.
 
@@ -64,7 +64,7 @@ harness/
 examples/minimal_eval.py example custom eval
 ```
 
-## 5 Canonical J-Space Tests (real measurements)
+## The 5 J-Space Tests (real measurements)
 
 All return `{"test","measured","pass","bar"}` with measured from live hooks, not hardcoded:
 
@@ -74,9 +74,9 @@ All return `{"test","measured","pass","bar"}` with measured from live hooks, not
 4. **Spanish→French** - Selectivity. S1 auto vs S2 deliberate, `auto_cos - deliberate_cos >0.05`.
 5. **Safety 0/180 Blackmail** - Critic hl30-35 early warning. 60 safety vs 60 benign, AUC via trapezoid, PASS AUC>0.65, report early offset token index.
 
-## Frontier Rubric - 11 Categories (adapted from FrontierFinance)
+## Frontier Rubric - 11 Categories
 
-Original FrontierFinance had Financial Accuracy, Process Transparency etc. For AGI we weight J-Space properties:
+An 11-category weighted rubric over J-Space properties (structure borrowed from a finance-domain rubric, reweighted for this project):
 
 | # | Category | Weight | What it measures |
 |---|---|---|---|
