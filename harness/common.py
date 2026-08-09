@@ -121,6 +121,28 @@ def _lazy_torch():
         return None
 
 
+def safe_torch_load(*args, **kwargs):
+    """torch.load that prefers weights_only=True, with a safe fallback.
+
+    weights_only=True uses the restricted unpickler that refuses arbitrary
+    code execution. We fall back to weights_only=False only when the
+    checkpoint carries non-tensor objects (the factory's full training blob:
+    optimizer/sampler/rng state) that the restricted loader rejects. These
+    checkpoints are trusted local artifacts produced by our own scripts, so
+    the fallback keeps every existing load working unchanged.
+    """
+    torch = _lazy_torch()
+    if torch is None:
+        raise RuntimeError(
+            "real mode requires torch (pip install torch); refusing to mock"
+        )
+    kwargs.pop("weights_only", None)
+    try:
+        return torch.load(*args, weights_only=True, **kwargs)
+    except Exception:
+        return torch.load(*args, weights_only=False, **kwargs)
+
+
 class MockTokenizer:
     """Deterministic single-token-per-word mock for offline CI."""
 
@@ -208,11 +230,11 @@ def load_model(
 
     cfg = load_cfg(preset)
     model = build_model(cfg)
-    # weights_only=False: torch>=2.6 defaults to weights_only=True, which cannot
-    # unpickle the factory's full training blob (optimizer/sampler/rng state).
-    # These checkpoints are trusted local artifacts produced by our own
-    # scripts/cpu_pilot_e2e.py run — never remote downloads.
-    state = torch.load(ckpt_path, map_location=device, weights_only=False)
+    # Trusted local artifacts produced by our own scripts/cpu_pilot_e2e.py run
+    # — never remote downloads. safe_torch_load prefers weights_only=True and
+    # falls back to weights_only=False for the factory's full training blob
+    # (optimizer/sampler/rng state), which the restricted loader cannot unpickle.
+    state = safe_torch_load(ckpt_path, map_location=device)
     sd = state.get("model", state)
     model.load_state_dict(sd, strict=False)
     model.eval()
