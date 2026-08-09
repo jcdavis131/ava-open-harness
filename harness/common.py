@@ -279,7 +279,7 @@ def _extract_logits(out: Any, torch: Any) -> Any:
         )
     if isinstance(out, torch.Tensor):
         return out
-    if isinstance(out, (list, tuple)):
+    if isinstance(out, list | tuple):
         return out[0]
     if hasattr(out, "logits"):
         return out.logits

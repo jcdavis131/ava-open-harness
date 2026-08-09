@@ -62,9 +62,9 @@ class TestDynamicVariation:
         m1 = _run_eval(name, 1).get("measured")
         m2 = _run_eval(name, 2).get("measured")
         # A static fabricated measured dict would be identical across seeds.
-        assert m1 != m2, (
-            f"{name} measured did not vary with seed → looks static/fabricated"
-        )
+        assert (
+            m1 != m2
+        ), f"{name} measured did not vary with seed → looks static/fabricated"
 
 
 class TestReportGrep:
@@ -74,9 +74,9 @@ class TestReportGrep:
         # Exact-token check: a fabricated static value round-trips verbatim; seed-noise
         # values serialize with long float tails and won't match these short literals.
         for lit in FORBIDDEN:
-            assert f": {lit}," not in blob and f": {lit}}}" not in blob, (
-                f"forbidden literal {lit} appears verbatim in mock report"
-            )
+            assert (
+                f": {lit}," not in blob and f": {lit}}}" not in blob
+            ), f"forbidden literal {lit} appears verbatim in mock report"
 
 
 class TestRealModeHonesty:
