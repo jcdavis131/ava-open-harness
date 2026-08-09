@@ -126,6 +126,14 @@ def my_eval_fn(model, tokenizer, device, **kwargs):
     return {"measured": {"score": 0.42}, "pass": True, "bar": "score>0.4"}
 ```
 
+## Ecosystem
+
+*Status as of 2026-08-09.*
+
+This package is vendored into the [dottie](https://github.com/jcdavis131/dottie) monorepo at `packages/ava-open-harness`, where its test suite runs in CI (`.github/workflows/ci.yml`; currently non-blocking there due to a documented package-name collision noted in that workflow). Per dottie `docs/CONSOLIDATION.md`, development consolidates in dottie: this standalone repo is a vendored mirror, and changes originate in dottie and are pushed outward.
+
+Sync state, measured 2026-08-09 (`diff -rq` between the two copies): **diverged, with the dottie copy functionally ahead.** The dottie copy adds dottie-aware factory-root resolution in `harness/common.py` (documented in its `docs/HARNESS_SPEC.md`), a `dottie_assistant` eval and task YAML (12 shipped task YAMLs vs 11 here), tests `test_common_auc.py` and `test_dottie_assistant.py` that this repo does not have, UTF-8 report encoding in `harness/runner.py`, a mock safety-AUC fix in `harness/evals/jspace_tests.py`, and a per-field variance sweep added to `tests/test_no_mock.py`. This repo's edge is tooling and lint hygiene absent from the vendored copy: `.github/workflows/lint.yml`, `.pre-commit-config.yaml`, `.python-version`, import-order and `noqa` cleanups in sources and tests, and an expanded ruff and dev-dependency configuration in `pyproject.toml` (which also diverges on metadata, e.g. `requires-python >=3.11` here vs `>=3.10` there). Treat the dottie copy as the source of truth for harness code.
+
 ## Free-tier only
 
 - No work data, no proprietary models, public pip only: torch (optional), transformers optional, numpy
