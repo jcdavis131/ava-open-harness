@@ -22,6 +22,7 @@ from ..common import (
     factory_modules,
     factory_root,
     real_unimplemented,
+    stable_seed,
 )
 from ..registry import register_eval
 
@@ -146,7 +147,9 @@ def openwiki_knowledge(
     # mock recall: each wiki page title -> seeded concept probe
     scores = []
     for f in wiki_files[:20]:
-        random.seed(hash(f.name) % 10000 + model.seed)
+        # stable_seed (not builtin hash(), which is PYTHONHASHSEED-salted and
+        # would make this "seeded" mock draw differ across runs/processes)
+        random.seed(stable_seed(f.name) + model.seed)
         scores.append(random.uniform(0.04, 0.18))
     avg = sum(scores) / len(scores) if scores else 0.0
     measured = {

@@ -11,6 +11,7 @@ import math
 import os
 import random
 import sys
+import zlib
 from typing import Any
 
 # ---------------------------------------------------------------------------
@@ -349,6 +350,18 @@ def logprob_of(model: Any, prompt_ids: list[int], target_ids: list[int]) -> floa
         # No silent fabricated fallback (HARNESS_SPEC anti-mock rule): a real-mode
         # measurement that can't be computed must fail loudly, never invent a float.
         raise RuntimeError(f"logprob_of failed on real model: {e}") from e
+
+
+def stable_seed(name: str) -> int:
+    """Process-stable per-string seed for deterministic mock draws.
+
+    Python's builtin hash() is salted per-process by PYTHONHASHSEED (on by
+    default since 3.3), so seeding mock randomness with hash(name) makes
+    "seeded" mock measurements silently differ across runs/processes with the
+    same --seed — exactly the kind of non-reproducibility this harness exists
+    to rule out. zlib.crc32 is unsalted and stable across processes/platforms.
+    """
+    return zlib.crc32(name.encode()) % 100000
 
 
 def cosine_sim(a: Any, b: Any) -> float:

@@ -11,7 +11,6 @@ Solo personal project, no connection to employer, built with public/free-tier on
 from __future__ import annotations
 
 import random
-import zlib
 from typing import Any
 
 from ..common import (
@@ -20,16 +19,11 @@ from ..common import (
     factory_modules,
     factory_root,
     real_unimplemented,
+    stable_seed,
 )
 from ..registry import register_eval
 
 BAR = "arith≥60% and facts≥70%"
-
-
-def _stable_seed(name: str) -> int:
-    """Process-stable per-name seed. Python's builtin hash() is salted by
-    PYTHONHASHSEED, so hash(name) makes 'seeded' mock draws differ every run."""
-    return zlib.crc32(name.encode()) % 100
 
 
 @register_eval(
@@ -62,7 +56,7 @@ def probes(
     probe_sets = ["arithmetic", "modus_ponens", "facts", "code_out"]
     scores = {}
     for name in probe_sets:
-        random.seed(model.seed + _stable_seed(name))
+        random.seed(model.seed + stable_seed(name))
         if name == "arithmetic":
             acc = random.uniform(0.55, 0.85)
         elif name == "facts":

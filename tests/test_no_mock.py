@@ -16,6 +16,7 @@ measurements. Three checks, matching the spec:
 """
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -62,9 +63,9 @@ class TestDynamicVariation:
         m1 = _run_eval(name, 1).get("measured")
         m2 = _run_eval(name, 2).get("measured")
         # A static fabricated measured dict would be identical across seeds.
-        assert (
-            m1 != m2
-        ), f"{name} measured did not vary with seed → looks static/fabricated"
+        assert m1 != m2, (
+            f"{name} measured did not vary with seed → looks static/fabricated"
+        )
 
 
 class TestReportGrep:
@@ -74,9 +75,52 @@ class TestReportGrep:
         # Exact-token check: a fabricated static value round-trips verbatim; seed-noise
         # values serialize with long float tails and won't match these short literals.
         for lit in FORBIDDEN:
-            assert (
-                f": {lit}," not in blob and f": {lit}}}" not in blob
-            ), f"forbidden literal {lit} appears verbatim in mock report"
+            assert f": {lit}," not in blob and f": {lit}}}" not in blob, (
+                f"forbidden literal {lit} appears verbatim in mock report"
+            )
+
+
+class TestStableSeedReproducibility:
+    """A "seeded" mock draw must be identical across separate interpreter
+    processes given the same --seed. Regression for a real bug: builtin
+    hash() is salted per-process by PYTHONHASHSEED (default since Python 3.3),
+    so any mock path that seeded random.seed(hash(name) + ...) silently
+    produced a DIFFERENT "reproducible" measurement every run/process — the
+    same class of fabricated-looking non-determinism this file's anti-mock
+    guard exists to catch, just triggered by process restart instead of code."""
+
+    def _openwiki_recall_mass(self, hashseed: str, tmp_path: Path) -> float:
+        wiki = tmp_path / "openwiki"
+        wiki.mkdir(exist_ok=True)
+        (wiki / "a.md").write_text("alpha page content", encoding="utf-8")
+        (wiki / "b.md").write_text("beta page content", encoding="utf-8")
+        code = (
+            "from harness.common import MockModel, MockTokenizer\n"
+            "from harness.evals.openwiki_knowledge import openwiki_knowledge\n"
+            f"r = openwiki_knowledge(MockModel(seed=5), MockTokenizer(), 'cpu', wiki_path={str(wiki)!r})\n"
+            "print(r['measured']['recall_mass'])\n"
+        )
+        out = subprocess.run(
+            [sys.executable, "-c", code],
+            cwd=str(ROOT),
+            env={
+                "PYTHONHASHSEED": hashseed,
+                "PATH": __import__("os").environ.get("PATH", ""),
+            },
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return float(out.stdout.strip())
+
+    def test_openwiki_mock_recall_mass_stable_across_hashseeds(self, tmp_path):
+        m1 = self._openwiki_recall_mass("1", tmp_path)
+        m2 = self._openwiki_recall_mass("2", tmp_path)
+        assert m1 == m2, (
+            "openwiki_knowledge mock recall_mass changed across PYTHONHASHSEED "
+            f"values ({m1} vs {m2}) — a 'seeded' mock draw must be "
+            "process-stable, not just seed-stable"
+        )
 
 
 class TestRealModeHonesty:
