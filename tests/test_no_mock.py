@@ -123,6 +123,44 @@ class TestStableSeedReproducibility:
         )
 
 
+class TestWikiScanOrderStability:
+    """Regression: scan_wiki() must select files by sorted path, not by
+    filesystem-enumeration order.
+
+    pathlib.rglob() is built on os.scandir(), which yields directory entries
+    in arbitrary, filesystem-dependent order (verified: NOT lexicographic).
+    scan_wiki() truncates to the first 50 matches per candidate dir, and
+    openwiki_knowledge() further truncates to the first 20/5. If that
+    truncation happens on an unsorted list, the very files backing a
+    "reproducible" recall_mass depend on directory-enumeration order — the
+    same wiki corpus can score differently across machines/filesystems or
+    across a fresh checkout, even with the seed fully pinned. Sorting first
+    makes the selected subset a pure function of the corpus content."""
+
+    def test_scan_wiki_returns_sorted_paths(self, tmp_path):
+        from harness.evals.openwiki_knowledge import scan_wiki
+
+        wiki = tmp_path / "openwiki"
+        wiki.mkdir()
+        # Create filenames in a shuffled (non-lexicographic) order so any
+        # accidental reliance on creation/insertion order would be caught.
+        names = [f"page_{i:03d}.md" for i in range(60)]
+        for name in sorted(names, key=lambda n: (hash(n) * 2654435761) & 0xFFFF):
+            (wiki / name).write_text("content", encoding="utf-8")
+
+        found = scan_wiki(str(wiki))
+        found_names = [p.name for p in found]
+
+        assert found_names == sorted(found_names), (
+            "scan_wiki() must return paths in sorted order so truncation to "
+            "the first-N cap is deterministic and content-derived, not "
+            "filesystem-enumeration-derived"
+        )
+        # The 50-cap must keep the lexicographically first 50 names, not an
+        # arbitrary filesystem-order-dependent subset.
+        assert found_names == sorted(names)[:50]
+
+
 class TestRealModeHonesty:
     @pytest.mark.parametrize("name", JSPACE)
     def test_unwired_real_paths_fail_honestly(self, name, monkeypatch):

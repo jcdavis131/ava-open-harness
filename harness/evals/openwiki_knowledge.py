@@ -48,7 +48,16 @@ def scan_wiki(wiki_path: str | None = None) -> list[pathlib.Path]:
     found = []
     for p in candidates:
         if p.exists():
-            found.extend(list(p.rglob("*.md"))[:50])
+            # os.scandir (which rglob is built on) yields entries in arbitrary,
+            # filesystem-dependent order — NOT sorted. Truncating an unsorted
+            # rglob() result with [:50] silently makes the selected subset (and
+            # therefore every downstream score) depend on directory-enumeration
+            # order rather than corpus content: the same wiki, re-checked out or
+            # scanned on a different filesystem, can yield a different first-50
+            # and a different "reproducible" recall_mass. Sort by path first so
+            # the same corpus always yields the same subset everywhere.
+            matches = sorted(p.rglob("*.md"), key=lambda x: str(x))
+            found.extend(matches[:50])
     return found
 
 
