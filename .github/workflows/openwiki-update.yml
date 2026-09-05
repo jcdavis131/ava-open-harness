@@ -1,8 +1,6 @@
 name: OpenWiki Update
 on:
-  push:
-    branches: [main]
-  # schedule trigger removed 2026-09-05: this repo is archived and superseded by
+  # push and schedule triggers removed 2026-09-05: this repo is archived and superseded by
   # https://github.com/jcdavis131/dottie/tree/main/packages/ava-open-harness.
   # The daily cron was failing every run; manual workflow_dispatch is kept only for history.
   workflow_dispatch:
