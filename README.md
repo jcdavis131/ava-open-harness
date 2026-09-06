@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-09-05.** This standalone copy is superseded by the dottie monorepo: https://github.com/jcdavis131/dottie/tree/main/packages/ava-open-harness. The dottie copy is newer; this one is frozen for history. Agents: do not install or develop here.
+
 # ava-open-harness
 
 > **Solo personal project, no connection to employer, built with public/free-tier only**
